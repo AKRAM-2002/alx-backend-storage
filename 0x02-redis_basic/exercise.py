@@ -7,6 +7,14 @@ import redis
 from typing import Union, Callable, Optional
 import functools
 
+def count_calls(method: Callable) -> Callable:
+        """Decorator to count calls to a method."""
+            @functools.wraps(method)
+            def wrapper(self, *args, **kwargs):
+                key = method.__qualname__  
+                self._redis.incr(key)
+                return method(self, *args, **kwargs)  
+            return wrapper
 
 def call_history(method: Callable) -> Callable:
     """Decorator to store the history of inputs and outputs for a function."""
@@ -33,7 +41,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
-    @call_history
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """Store data in Redis with a random key.
 
@@ -47,13 +55,7 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self,
-    key: str,
-    fn: Optional[Callable] = None) -> Union[str,
-    bytes,
-    int,
-    float,
-     None]:
+    def get(self,key: str, fn: Optional[Callable] = None) -> Union[str,bytes,int, float,None]:
         '''
         Retrieve data from Redis and apply an optional conversion function
         '''
